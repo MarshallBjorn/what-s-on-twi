@@ -10,6 +10,12 @@ uv sync
 cp .env.example .env  # i wpisz swój RAPIDAPI_KEY
 ```
 
+## Stack
+- Python 3.11+, `uv`
+- RapidAPI (`twitter-api45`) + opcjonalny fallback CSV
+- VADER (NLTK) + TextBlob
+- matplotlib, seaborn, wordcloud
+
 ## Uruchomienie
 
 ```bash

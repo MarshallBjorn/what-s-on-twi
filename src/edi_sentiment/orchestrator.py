@@ -1,25 +1,26 @@
-"""End-to-end pipeline: scrape -> preprocess -> analyze -> visualize."""
+"""Pipeline glue: fetch → clean → score → visualize."""
 from __future__ import annotations
 
+import os
+
+import certifi
 import nltk
 import pandas as pd
 
-from . import preproccesor, scraper
+from . import analyzer, preproccessor, scraper, visualizer
 from .logger import get_logger
 
 log = get_logger(__name__)
 
 
 def _ensure_nltk_data() -> None:
-    import os
-    import certifi
     os.environ["SSL_CERT_FILE"] = certifi.where()
+    os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
     for pkg in ("vader_lexicon", "stopwords", "punkt", "punkt_tab"):
         nltk.download(pkg, quiet=True)
 
 
 def run_pipeline(query: str, limit: int) -> None:
-    """Run all pipeline stages end-to-end."""
     _ensure_nltk_data()
 
     tweets = scraper.fetch_tweets(query, limit)
@@ -30,11 +31,17 @@ def run_pipeline(query: str, limit: int) -> None:
 
     df["created_at"] = pd.to_datetime(
         df["created_at"],
-        format="%a %b %d %H:%M:%S %z %Y",
         utc=True,
         errors="coerce",
+        format="%a %b %d %H:%M:%S %z %Y",
     )
-    df = preproccesor.clean_tweets(df)
 
-    # TODO Wieczór 2: analyzer.analyze_sentiment + visualizer.plot_*
-    log.info("Evening 1 done: %d tweets ready for sentiment analysis", len(df))
+    df = preproccessor.clean_tweets(df)
+    if df.empty:
+        log.error("Preprocessing removed all rows, aborting")
+        return
+
+    df = analyzer.score_tweets(df)
+    visualizer.render_all(df)
+
+    log.info("Pipeline complete: %d tweets analyzed, charts in output/", len(df))
